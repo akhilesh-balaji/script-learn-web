@@ -211,16 +211,36 @@ select {
 }
 
 /* Language selection grid */
+/* .lang-grid { */
+/*   display: flex; */
+/*   flex-wrap: wrap; */
+/*   gap: 0.75rem; */
+/*   margin-bottom: 2rem; */
+/*   width: 100%; */
+/* } */
+/* .lang-card { */
+/*   flex: 1 1 140px; */
+/*   display: flex; */
+/*   flex-direction: column; */
+/*   align-items: center; */
+/*   gap: 0.35rem; */
+/*   padding: 1.1rem 1rem; */
+/*   background: var(--surface); */
+/*   border: 2px solid var(--border); */
+/*   border-radius: var(--radius); */
+/*   transition: border-color 0.15s, transform 0.1s, background 0.15s; */
+/* } */
 .lang-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  /* Exactly two columns of equal width */
   gap: 0.75rem;
   margin-bottom: 2rem;
   width: 100%;
 }
 
 .lang-card {
-  flex: 1 1 140px;
+  /* The flex sizing property is removed; CSS Grid handles the width now */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -230,6 +250,11 @@ select {
   border: 2px solid var(--border);
   border-radius: var(--radius);
   transition: border-color 0.15s, transform 0.1s, background 0.15s;
+}
+
+/* If the last card is an odd number (1st, 3rd, 5th, etc.), it spans both columns */
+.lang-card:last-child:nth-child(odd) {
+  grid-column: span 2;
 }
 
 .lang-card:hover {
@@ -244,7 +269,7 @@ select {
 }
 
 [data-theme="light"] .lang-card.selected {
-  background: color-mix(in srgb, var(--coral-dim) 20%, transparent);
+  background: color-mix(in srgb, var(--coral-dim) 10%, transparent);
 }
 
 .lang-card:focus-visible {
