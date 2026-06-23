@@ -23,19 +23,6 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 const DIFF_LABELS = ['single chars', '2-char combos', 'short words', 'any word'];
 
-// BCP-47 codes for Web Speech API, keyed by script folder name.
-// Add more as you add language packs.
-const SPEECH_LANGS = {
-  bengali:    'bn-BD',
-  devanagiri: 'hi-IN',
-  hindi:      'hi-IN',
-  tamil:      'ta-IN',
-  telugu:     'te-IN',
-  malayalam:  'ml-IN',
-  kannada:    'kn-IN',
-  gujarati:   'gu-IN',
-  punjabi:    'pa-IN',
-};
 
 // Strip the parenthetical prefix from a native title, e.g.
 // "(ঋ) বাংলা লিপি"  →  "বাংলা লিপি"
@@ -120,20 +107,34 @@ function showScreen(name) {
 
 const Tts = {
   _enabled: false,
-
-  set enabled(v) { this._enabled = !!v; },
-  get enabled()  { return this._enabled; },
+  _current: null,
 
   speak(word, script) {
-    if (!this._enabled || !window.speechSynthesis) return;
-    const lang = SPEECH_LANGS[script];
-    if (!lang) return;
-    window.speechSynthesis.cancel();
-    const utt = new SpeechSynthesisUtterance(word);
-    utt.lang = lang;
-    utt.rate = 0.85;
-    window.speechSynthesis.speak(utt);
+    if (!this._enabled) return;
+    if (this._current) {
+      this._current.pause();
+      this._current.src = '';
+      this._current = null;
+    }
+    const url = `/api/tts?word=${encodeURIComponent(word)}&script=${encodeURIComponent(script)}`;
+    const audio = new Audio(url);
+    this._current = audio;
+    audio.play().catch(err => {
+      console.warn('TTS playback error:', err);
+      Settings.showTtsError(err.message);
+    });
+    audio.addEventListener('ended', () => { this._current = null; });
   },
+
+  set enabled(v) {
+    this._enabled = !!v;
+    localStorage.setItem('skrpt-speak', this._enabled ? '1' : '0');
+    if (!v && this._current) {
+      this._current.pause();
+      this._current = null;
+    }
+  },
+  get enabled() { return this._enabled; },
 };
 
 
@@ -320,7 +321,7 @@ const Game = {
         animateWordChange(data.word);
         $('progress').textContent = `${data.counter} / ${data.total}`;
         $('points').textContent   = `${data.points} pts`;
-        if (data.speak_pending) Tts.speak(data.word, data.script);
+        Tts.speak(data.word, data.script);
         break;
       }
 
@@ -350,7 +351,7 @@ const Game = {
         // "New Round" was clicked — start fresh
         this.applyState(data);
         this.enterActiveState(data.word, true);
-        if (data.speak_pending) Tts.speak(data.word, data.script);
+        Tts.speak(data.word, data.script);
         break;
       }
     }
@@ -390,7 +391,7 @@ const Game = {
     }
     this.applyState(data);
     this.enterActiveState(data.word, false);
-    if (data.speak_pending) Tts.speak(data.word, data.script);
+    Tts.speak(data.word, data.script);
     showScreen('game');
   },
 

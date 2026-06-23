@@ -18,7 +18,7 @@ POST /api/game/end_round     → end current round early
 
 import os
 
-from flask import Flask, jsonify, render_template, request, session
+from flask import Flask, jsonify, render_template, request, send_file, session
 
 import engine
 import game as gm
@@ -30,12 +30,13 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
+
 def _session_game():
     return session.get("game"), session.get("learning_stages", {})
 
 
 def _save(game_dict, stages):
-    session["game"]            = game_dict
+    session["game"] = game_dict
     session["learning_stages"] = stages
 
 
@@ -56,12 +57,14 @@ def _require():
 
 # ── pages ─────────────────────────────────────────────────────────────────────
 
+
 @app.route("/")
 def index():
     return render_template("index.html")
 
 
 # ── data ──────────────────────────────────────────────────────────────────────
+
 
 @app.route("/api/languages")
 def api_languages():
@@ -70,9 +73,10 @@ def api_languages():
 
 # ── game lifecycle ────────────────────────────────────────────────────────────
 
+
 @app.route("/api/game/start", methods=["POST"])
 def api_start():
-    data  = request.get_json(silent=True) or {}
+    data = request.get_json(silent=True) or {}
     langs = engine.list_languages()
     if not langs:
         return _err("no language packs found in langs/", 500)
@@ -113,10 +117,10 @@ def api_submit():
     if err:
         return err
 
-    data       = request.get_json(silent=True) or {}
-    answer     = data.get("answer", "")
+    data = request.get_json(silent=True) or {}
+    answer = data.get("answer", "")
     elapsed_ms = data.get("elapsed_ms")
-    client_s   = float(elapsed_ms) / 1000.0 if elapsed_ms is not None else None
+    client_s = float(elapsed_ms) / 1000.0 if elapsed_ms is not None else None
 
     result = gm.submit(gd, stages, answer=answer, client_elapsed_s=client_s)
     _save(gd, stages)
@@ -129,7 +133,7 @@ def api_change_script():
     if err:
         return err
 
-    data   = request.get_json(silent=True) or {}
+    data = request.get_json(silent=True) or {}
     script = data.get("script")
     if not script:
         return _err("'script' required")
@@ -138,9 +142,9 @@ def api_change_script():
     except engine.UnknownScriptError:
         return _err(f"unknown script: {script!r}")
 
-    same      = gd["script"] == script
+    same = gd["script"] == script
     gd["script"] = script
-    result    = gm.reset_round(gd, stages, nospeak=same)
+    result = gm.reset_round(gd, stages, nospeak=same)
     _save(gd, stages)
     return _ok(gd, stages, result)
 
@@ -152,7 +156,7 @@ def api_toggle_mode():
         return err
 
     gd["mode"] = "learning" if gd["mode"] == "practice" else "practice"
-    result     = gm.reset_round(gd, stages, nospeak=True)
+    result = gm.reset_round(gd, stages, nospeak=True)
     _save(gd, stages)
     return _ok(gd, stages, result)
 
@@ -163,9 +167,9 @@ def api_set_difficulty():
     if err:
         return err
 
-    data             = request.get_json(silent=True) or {}
+    data = request.get_json(silent=True) or {}
     gd["difficulty"] = max(0, min(3, int(data.get("difficulty", 0))))
-    result           = gm.reset_round(gd, stages, nospeak=True)
+    result = gm.reset_round(gd, stages, nospeak=True)
     _save(gd, stages)
     return _ok(gd, stages, result)
 
@@ -176,9 +180,9 @@ def api_set_num_words():
     if err:
         return err
 
-    data                       = request.get_json(silent=True) or {}
-    gd["num_words_for_round"]  = max(1, min(50, int(data.get("num_words", 3))))
-    result                     = gm.reset_round(gd, stages, nospeak=True)
+    data = request.get_json(silent=True) or {}
+    gd["num_words_for_round"] = max(1, min(50, int(data.get("num_words", 3))))
+    result = gm.reset_round(gd, stages, nospeak=True)
     _save(gd, stages)
     return _ok(gd, stages, result)
 
@@ -189,15 +193,17 @@ def api_advance_stage():
     if err:
         return err
 
-    data      = request.get_json(silent=True) or {}
+    data = request.get_json(silent=True) or {}
     direction = data.get("direction", "next")
     if direction not in ("next", "prev"):
         return _err("direction must be 'next' or 'prev'")
 
-    lang                   = engine.load_language(gd["script"])
-    current                = stages.get(gd["script"], 1.0)
-    stages[gd["script"]]   = engine.advance_stage(current, lang["learning_path"], direction)
-    result                 = gm.reset_round(gd, stages, nospeak=True)
+    lang = engine.load_language(gd["script"])
+    current = stages.get(gd["script"], 1.0)
+    stages[gd["script"]] = engine.advance_stage(
+        current, lang["learning_path"], direction
+    )
+    result = gm.reset_round(gd, stages, nospeak=True)
     _save(gd, stages)
     return _ok(gd, stages, result)
 
@@ -211,6 +217,73 @@ def api_end_round():
     result = gm.end_round_early(gd, stages)
     _save(gd, stages)
     return _ok(gd, stages, result)
+
+
+# ── TTS ───────────────────────────────────────────────────────────────────────
+_GTTS_LANGS = {
+    "bengali": "bn",
+    "devanagiri": "hi",
+    "hindi": "hi",
+    "tamil": "ta",
+    "telugu": "te",
+    "malayalam": "ml",
+    "kannada": "kn",
+    "gujarati": "gu",
+    "punjabi": "pa",
+}
+
+_tts_cache: dict[tuple[str, str], bytes] = {}
+_TTS_CACHE_MAX = 300
+
+
+@app.route("/api/tts")
+def api_tts():
+    word = request.args.get("word", "").strip()
+    script = request.args.get("script", "").strip()
+    if not word or not script:
+        return _err("word and script are required")
+
+    lang = _GTTS_LANGS.get(script)
+    if not lang:
+        try:
+            from gtts.lang import tts_langs
+
+            matches = [
+                code
+                for code, name in tts_langs().items()
+                if name.lower() == script.lower()
+            ]
+            lang = matches[0] if matches else None
+        except Exception:
+            pass
+    if not lang:
+        return _err(f"no TTS language for script '{script}'", 404)
+
+    cache_key = (word, lang)
+    if cache_key not in _tts_cache:
+        try:
+            import io
+
+            from gtts import gTTS
+
+            buf = io.BytesIO()
+            gTTS(text=word, lang=lang).write_to_fp(buf)
+            buf.seek(0)
+            audio_bytes = buf.read()
+        except Exception as exc:
+            return _err(f"gTTS error: {exc}", 502)
+        if len(_tts_cache) >= _TTS_CACHE_MAX:
+            _tts_cache.pop(next(iter(_tts_cache)))
+        _tts_cache[cache_key] = audio_bytes
+
+    import io
+
+    return send_file(
+        io.BytesIO(_tts_cache[cache_key]),
+        mimetype="audio/mpeg",
+        as_attachment=False,
+        download_name="tts.mp3",
+    )
 
 
 if __name__ == "__main__":
