@@ -19,7 +19,8 @@
   --coral: #5560ff;
   --coral-hover: #404bd6;
   /* #1b1c6b; */
-  --coral-dim: rgba(20, 20, 90, 0.5);
+  --coral-dim: #2d35a1;
+  /* rgba(20, 20, 90, 0.5); */
   --mint: #5de69a;
   --mint-dim: rgba(93, 230, 154, 0.12);
   --rose: #f05e7a;
@@ -89,6 +90,17 @@ body {
 
   color: var(--text);
   font-family: var(--font-serif);
+}
+
+/* Light Theme Override */
+[data-theme="light"] body {
+  /* When the light theme is active, strip the image and use the light --bg color */
+  /* background: var(--bg); */
+
+  /* background: color-mix(in srgb, var(--coral-dim) 50%, transparent); */
+  background:
+    linear-gradient(color-mix(in srgb, var(--bg) 90%, transparent), color-mix(in srgb, var(--bg) 93%, transparent)),
+    url("https://kevinstandagephotography.wordpress.com/wp-content/uploads/2020/04/ksp_8656.jpg?w=1024");
 }
 
 button {
@@ -228,6 +240,11 @@ select {
 .lang-card.selected {
   border-color: var(--coral);
   background: var(--coral-dim);
+  /* background: color-mix(in srgb, var(--coral-dim) 20%, transparent); */
+}
+
+[data-theme="light"] .lang-card.selected {
+  background: color-mix(in srgb, var(--coral-dim) 20%, transparent);
 }
 
 .lang-card:focus-visible {
@@ -243,12 +260,13 @@ select {
 }
 
 .lang-latin {
-  font-family: var(--font-serif);
+  font-family: var(--font-mono);
   font-size: 0.7rem;
   font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  opacity: 0.6;
+  /* color: var(--text-hint); */
 }
 
 
