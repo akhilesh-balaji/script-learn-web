@@ -279,7 +279,7 @@ select {
 
 .lang-native {
   font-family: var(--font-serif);
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   line-height: 1.2;
   color: var(--text);
 }
