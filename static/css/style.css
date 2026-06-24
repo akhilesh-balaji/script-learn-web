@@ -932,3 +932,80 @@ select {
   background: var(--border);
   border-radius: 3px;
 }
+
+/* ── Play / replay button ───────────────────────────────── */
+.btn-replay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+  padding-left: 2px;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  margin-bottom: 50px;
+}
+
+.btn-replay:hover {
+  color: var(--coral);
+  border-color: var(--coral);
+  background: var(--coral-dim);
+}
+
+/* ── Attribution rows (welcome / settings screens) ──────── */
+.attribution-row {
+  text-align: center;
+  font-size: 0.72rem;
+  padding: 0.75rem 0 0.25rem;
+  flex-shrink: 0;
+  margin-top: auto;
+  /* push to bottom of flex column */
+}
+
+/* Make <a class="btn-link"> work without underline */
+a.btn-link {
+  text-decoration: none;
+  display: inline;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 1px;
+}
+
+/* ── Screen transitions ──────────────────────────────────── */
+@keyframes screen-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes screen-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.screen.active {
+  animation: screen-enter 0.3s var(--ease) both;
+}
+
+.screen.exiting {
+  display: flex;
+  /* keep visible during exit animation */
+  animation: screen-exit 0.22s var(--ease) both;
+}

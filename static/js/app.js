@@ -243,6 +243,7 @@ const Game = {
 
     // Language select
     $('lang-select').value = data.script;
+    this.syncTtsButton();
   },
 
   // ── Switch to "round active" UI state ──────────────────────
@@ -328,6 +329,7 @@ const Game = {
       case 'incorrect': {
         $('feedback').textContent = `× ${result.revealed_answer}`;
         $('feedback').className   = 'feedback err';
+        Tts.speak(Game.data.word, Game.data.script);
         $('answer-input').classList.add('shake');
         $('answer-input').addEventListener(
           'animationend',
@@ -394,8 +396,14 @@ const Game = {
     Tts.speak(data.word, data.script);
     showScreen('game');
   },
-
+  syncTtsButton() {
+    const btn = $('btn-replay');
+    if (btn) btn.classList.toggle('hidden', !Tts.enabled);
+  },
   initEventListeners() {
+    $('btn-replay').addEventListener('click', () => {
+      if (Game.data) Tts.speak(Game.data.word, Game.data.script);
+    });
     // Verify / New Round button
     $('btn-verify').addEventListener('click', async () => {
       if ($('answer-area').classList.contains('complete')) {
@@ -539,6 +547,7 @@ const Settings = {
     // Speak words toggle
     $('speak-toggle').addEventListener('change', e => {
       Tts.enabled = e.target.checked;
+      Game.syncTtsButton();
       localStorage.setItem('skrpt-speak', e.target.checked ? '1' : '0');
       // Sync to server if game is running
       const script = Game.data?.script;
